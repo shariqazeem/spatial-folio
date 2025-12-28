@@ -9,6 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+    metadataBase: new URL("https://shariqshaukat.vercel.app"),
     title: "Shariq Shaukat | Full Stack Engineer & Blockchain Developer",
     description: "5x Hackathon Winner building on Solana. A spatial desktop experience showcasing AI agents, DeFi protocols, and production-grade dApps.",
     keywords: ["Shariq Shaukat", "Full Stack Engineer", "Blockchain Developer", "Solana", "React", "Next.js", "Web3", "AI", "DeFi"],

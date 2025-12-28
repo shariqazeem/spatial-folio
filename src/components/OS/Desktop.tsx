@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOSStore, AppId } from "@/store/os-store";
 import { Window } from "./Window";
@@ -9,6 +9,7 @@ import { AboutApp } from "../Apps/AboutApp";
 import { WorkApp } from "../Apps/WorkApp";
 import { StackApp } from "../Apps/StackApp";
 import { ContactApp } from "../Apps/ContactApp";
+import { X } from "lucide-react";
 
 // App content mapping
 const APP_COMPONENTS: Record<AppId, React.ComponentType> = {
@@ -18,12 +19,35 @@ const APP_COMPONENTS: Record<AppId, React.ComponentType> = {
     contact: ContactApp,
 };
 
+const APP_TITLES: Record<AppId, string> = {
+    about: "About",
+    work: "Work",
+    stack: "Stack",
+    contact: "Contact",
+};
+
+// Hook to detect mobile
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    return isMobile;
+};
+
 export const Desktop = () => {
     const { windows, activeWindowId, closeWindow } = useOSStore();
+    const isMobile = useIsMobile();
 
     // Keyboard shortcuts
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        // Cmd/Ctrl + W to close active window
         if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
             e.preventDefault();
             if (activeWindowId) {
@@ -37,7 +61,7 @@ export const Desktop = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
 
-    const openWindows = Object.values(windows).filter(w => w.isOpen);
+    const openWindows = Object.values(windows).filter(w => w.isOpen && !w.isMinimized);
 
     return (
         <div className="fixed inset-0 overflow-hidden bg-[#050505] select-none">
@@ -57,10 +81,10 @@ export const Desktop = () => {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-6"
                         >
                             <motion.h1
-                                className="text-6xl md:text-8xl font-bold tracking-[-0.04em] text-white/90 text-center"
+                                className="text-4xl sm:text-6xl md:text-8xl font-bold tracking-[-0.04em] text-white/90 text-center"
                                 initial={{ y: 20 }}
                                 animate={{ y: 0 }}
                                 transition={{ delay: 0.1 }}
@@ -68,17 +92,17 @@ export const Desktop = () => {
                                 Welcome.
                             </motion.h1>
                             <motion.p
-                                className="mt-6 text-lg text-white/40 tracking-tight"
+                                className="mt-4 sm:mt-6 text-base sm:text-lg text-white/40 tracking-tight text-center"
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.2 }}
                             >
-                                Click the dock below to explore.
+                                {isMobile ? "Tap the dock below to explore." : "Click the dock below to explore."}
                             </motion.p>
 
                             {/* Animated hint arrow */}
                             <motion.div
-                                className="absolute bottom-32"
+                                className="absolute bottom-28 sm:bottom-32"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.5 }}
@@ -101,25 +125,82 @@ export const Desktop = () => {
                     )}
                 </AnimatePresence>
 
-                {/* Windows */}
-                <AnimatePresence mode="popLayout">
-                    {openWindows.map((windowState) => {
-                        const AppComponent = APP_COMPONENTS[windowState.id];
-                        return (
-                            <Window key={windowState.id} windowState={windowState}>
-                                <AppComponent />
-                            </Window>
-                        );
-                    })}
-                </AnimatePresence>
+                {/* Windows - Desktop vs Mobile */}
+                {isMobile ? (
+                    // Mobile: Full-screen sheet style
+                    <AnimatePresence mode="wait">
+                        {openWindows.length > 0 && (
+                            <MobileSheet
+                                windowState={openWindows[openWindows.length - 1]}
+                                onClose={() => closeWindow(openWindows[openWindows.length - 1].id)}
+                            />
+                        )}
+                    </AnimatePresence>
+                ) : (
+                    // Desktop: Draggable windows
+                    <AnimatePresence mode="popLayout">
+                        {openWindows.map((windowState) => {
+                            const AppComponent = APP_COMPONENTS[windowState.id];
+                            return (
+                                <Window key={windowState.id} windowState={windowState}>
+                                    <AppComponent />
+                                </Window>
+                            );
+                        })}
+                    </AnimatePresence>
+                )}
             </div>
 
             {/* Dock */}
             <Dock />
 
-            {/* Clock */}
+            {/* Clock - Hidden on mobile */}
             <Clock />
         </div>
+    );
+};
+
+// Mobile full-screen sheet component
+const MobileSheet = ({
+    windowState,
+    onClose,
+}: {
+    windowState: { id: AppId; title: string };
+    onClose: () => void;
+}) => {
+    const AppComponent = APP_COMPONENTS[windowState.id];
+
+    return (
+        <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="fixed inset-0 z-50 flex flex-col bg-[#0a0a0a]"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl">
+                <div className="w-10" /> {/* Spacer for centering */}
+                <h2 className="text-base font-semibold text-white/90">
+                    {APP_TITLES[windowState.id]}
+                </h2>
+                <button
+                    onClick={onClose}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 active:bg-white/20 transition-colors"
+                >
+                    <X size={20} className="text-white/70" />
+                </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto">
+                <AppComponent />
+            </div>
+
+            {/* Bottom safe area */}
+            <div className="h-20" /> {/* Space for dock */}
+        </motion.div>
     );
 };
 
@@ -127,7 +208,6 @@ export const Desktop = () => {
 const AuroraBackground = () => {
     return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Primary aurora */}
             <motion.div
                 className="absolute w-[150%] h-[150%] top-[-25%] left-[-25%]"
                 animate={{
@@ -152,9 +232,8 @@ const AuroraBackground = () => {
                 />
             </motion.div>
 
-            {/* Secondary pulse */}
             <motion.div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] md:w-[600px] h-[400px] md:h-[600px] rounded-full"
                 style={{
                     background: "radial-gradient(circle, rgba(100, 100, 255, 0.1), transparent 60%)",
                     filter: "blur(80px)",
@@ -202,7 +281,7 @@ const Clock = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="fixed top-4 right-6 z-50 text-right"
+            className="fixed top-4 right-4 sm:right-6 z-50 text-right hidden sm:block"
         >
             <div className="text-sm font-medium text-white/80 tabular-nums tracking-tight">
                 {time}
@@ -213,6 +292,3 @@ const Clock = () => {
         </motion.div>
     );
 };
-
-// Need to import React for the Clock component
-import React from "react";

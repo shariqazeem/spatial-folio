@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import {
     motion,
     useMotionValue,
@@ -25,13 +25,32 @@ const DOCK_APPS: DockApp[] = [
     { id: "contact", icon: Mail, label: "Contact" },
 ];
 
+// Hook to detect mobile
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    return isMobile;
+};
+
 export const Dock = () => {
     const mouseX = useMotionValue(Infinity);
     const { windows, soundEnabled, toggleSound } = useOSStore();
+    const isMobile = useIsMobile();
 
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        mouseX.set(e.pageX);
-    }, [mouseX]);
+        if (!isMobile) {
+            mouseX.set(e.pageX);
+        }
+    }, [mouseX, isMobile]);
 
     const handleMouseLeave = useCallback(() => {
         mouseX.set(Infinity);
@@ -43,11 +62,12 @@ export const Dock = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200]"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
             <motion.nav
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
-                className="flex items-end gap-[3px] px-2 pb-2 pt-2 rounded-2xl border border-white/[0.1] bg-white/[0.03] shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+                className="flex items-end gap-1 sm:gap-[3px] px-2 sm:px-2 pb-2 pt-2 rounded-2xl border border-white/[0.1] bg-white/[0.03] shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
                 style={{
                     backdropFilter: "blur(30px) saturate(150%)",
                     WebkitBackdropFilter: "blur(30px) saturate(150%)",
@@ -60,11 +80,12 @@ export const Dock = () => {
                         mouseX={mouseX}
                         isOpen={windows[app.id].isOpen}
                         isMinimized={windows[app.id].isMinimized}
+                        isMobile={isMobile}
                     />
                 ))}
 
                 {/* Divider */}
-                <div className="mx-1.5 h-8 w-px bg-white/10 self-center" />
+                <div className="mx-1 sm:mx-1.5 h-6 sm:h-8 w-px bg-white/10 self-center" />
 
                 {/* Resume download */}
                 <DockButton
@@ -76,16 +97,20 @@ export const Dock = () => {
                         link.click();
                     }}
                     icon={FileText}
-                    label="Download Resume"
+                    label="Resume"
+                    isMobile={isMobile}
                 />
 
-                {/* Sound toggle */}
-                <DockButton
-                    mouseX={mouseX}
-                    onClick={toggleSound}
-                    icon={soundEnabled ? Volume2 : VolumeX}
-                    label={soundEnabled ? "Sound On" : "Sound Off"}
-                />
+                {/* Sound toggle - Hidden on mobile */}
+                {!isMobile && (
+                    <DockButton
+                        mouseX={mouseX}
+                        onClick={toggleSound}
+                        icon={soundEnabled ? Volume2 : VolumeX}
+                        label={soundEnabled ? "Sound On" : "Sound Off"}
+                        isMobile={isMobile}
+                    />
+                )}
             </motion.nav>
         </motion.div>
     );
@@ -96,9 +121,10 @@ interface DockIconProps {
     mouseX: MotionValue<number>;
     isOpen: boolean;
     isMinimized: boolean;
+    isMobile: boolean;
 }
 
-const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
+const DockIcon = ({ app, mouseX, isOpen, isMinimized, isMobile }: DockIconProps) => {
     const ref = useRef<HTMLButtonElement>(null);
     const { openWindow, focusWindow } = useOSStore();
     const [isHovered, setIsHovered] = useState(false);
@@ -108,9 +134,9 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
         return val - bounds.x - bounds.width / 2;
     });
 
-    // Magnification settings
-    const baseSize = 48;
-    const maxSize = 68;
+    // Magnification settings - smaller on mobile
+    const baseSize = isMobile ? 44 : 48;
+    const maxSize = isMobile ? 44 : 68; // No magnification on mobile
     const range = 120;
 
     const size = useSpring(
@@ -119,7 +145,7 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
     );
 
     const y = useSpring(
-        useTransform(distance, [-range, 0, range], [0, -8, 0]),
+        useTransform(distance, [-range, 0, range], [0, isMobile ? 0 : -8, 0]),
         { stiffness: 300, damping: 25 }
     );
 
@@ -137,10 +163,10 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
         <motion.button
             ref={ref}
             onClick={handleClick}
-            onMouseEnter={() => setIsHovered(true)}
+            onMouseEnter={() => !isMobile && setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            style={{ width: size, height: size, y }}
-            className="relative flex items-center justify-center"
+            style={{ width: isMobile ? baseSize : size, height: isMobile ? baseSize : size, y: isMobile ? 0 : y }}
+            className="relative flex items-center justify-center active:scale-90 transition-transform"
             whileTap={{ scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >
@@ -160,12 +186,12 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
 
             {/* Icon */}
             <motion.div className="relative z-10 flex items-center justify-center text-white/70">
-                <Icon size={22} strokeWidth={1.5} />
+                <Icon size={isMobile ? 20 : 22} strokeWidth={1.5} />
             </motion.div>
 
-            {/* Tooltip */}
+            {/* Tooltip - Desktop only */}
             <AnimatePresence>
-                {isHovered && (
+                {isHovered && !isMobile && (
                     <motion.div
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -199,9 +225,10 @@ interface DockButtonProps {
     onClick: () => void;
     icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
     label: string;
+    isMobile: boolean;
 }
 
-const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => {
+const DockButton = ({ mouseX, onClick, icon: Icon, label, isMobile }: DockButtonProps) => {
     const ref = useRef<HTMLButtonElement>(null);
     const [isHovered, setIsHovered] = useState(false);
 
@@ -210,8 +237,8 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => 
         return val - bounds.x - bounds.width / 2;
     });
 
-    const baseSize = 40;
-    const maxSize = 52;
+    const baseSize = isMobile ? 38 : 40;
+    const maxSize = isMobile ? 38 : 52;
     const range = 100;
 
     const size = useSpring(
@@ -220,7 +247,7 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => 
     );
 
     const y = useSpring(
-        useTransform(distance, [-range, 0, range], [0, -5, 0]),
+        useTransform(distance, [-range, 0, range], [0, isMobile ? 0 : -5, 0]),
         { stiffness: 300, damping: 25 }
     );
 
@@ -228,10 +255,10 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => 
         <motion.button
             ref={ref}
             onClick={onClick}
-            onMouseEnter={() => setIsHovered(true)}
+            onMouseEnter={() => !isMobile && setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            style={{ width: size, height: size, y }}
-            className="relative flex items-center justify-center rounded-lg"
+            style={{ width: isMobile ? baseSize : size, height: isMobile ? baseSize : size, y: isMobile ? 0 : y }}
+            className="relative flex items-center justify-center rounded-lg active:scale-90 transition-transform"
             whileTap={{ scale: 0.9 }}
         >
             <div
@@ -241,11 +268,11 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => 
                     boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
                 }}
             />
-            <Icon size={18} strokeWidth={1.5} className="text-white/50 relative z-10" />
+            <Icon size={isMobile ? 16 : 18} strokeWidth={1.5} className="text-white/50 relative z-10" />
 
-            {/* Tooltip */}
+            {/* Tooltip - Desktop only */}
             <AnimatePresence>
-                {isHovered && (
+                {isHovered && !isMobile && (
                     <motion.div
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}

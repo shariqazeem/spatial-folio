@@ -189,7 +189,7 @@ const SlideToSend = ({
 }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState(0);
-    const sliderWidth = 280;
+    const sliderWidth = typeof window !== 'undefined' && window.innerWidth < 400 ? 240 : 280;
     const handleWidth = 48;
     const maxDrag = sliderWidth - handleWidth - 8;
 
