@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 import {
     motion,
     useMotionValue,
@@ -25,32 +25,16 @@ const DOCK_APPS: DockApp[] = [
     { id: "contact", icon: Mail, label: "Contact" },
 ];
 
-// Hook to detect mobile
-const useIsMobile = () => {
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkMobile();
-        window.addEventListener("resize", checkMobile);
-        return () => window.removeEventListener("resize", checkMobile);
-    }, []);
-
-    return isMobile;
-};
-
 export const Dock = () => {
     const mouseX = useMotionValue(Infinity);
     const { windows, soundEnabled, toggleSound } = useOSStore();
-    const isMobile = useIsMobile();
 
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        if (!isMobile) {
+        // Only enable magnification on non-touch devices
+        if (window.matchMedia('(hover: hover)').matches) {
             mouseX.set(e.pageX);
         }
-    }, [mouseX, isMobile]);
+    }, [mouseX]);
 
     const handleMouseLeave = useCallback(() => {
         mouseX.set(Infinity);
@@ -67,7 +51,7 @@ export const Dock = () => {
             <motion.nav
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
-                className="flex items-end gap-1 sm:gap-[3px] px-2 sm:px-2 pb-2 pt-2 rounded-2xl border border-white/[0.1] bg-white/[0.03] shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+                className="flex items-end gap-1 md:gap-[3px] px-2 pb-2 pt-2 rounded-2xl border border-white/[0.1] bg-white/[0.03] shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
                 style={{
                     backdropFilter: "blur(30px) saturate(150%)",
                     WebkitBackdropFilter: "blur(30px) saturate(150%)",
@@ -80,12 +64,11 @@ export const Dock = () => {
                         mouseX={mouseX}
                         isOpen={windows[app.id].isOpen}
                         isMinimized={windows[app.id].isMinimized}
-                        isMobile={isMobile}
                     />
                 ))}
 
                 {/* Divider */}
-                <div className="mx-1 sm:mx-1.5 h-6 sm:h-8 w-px bg-white/10 self-center" />
+                <div className="mx-1 md:mx-1.5 h-6 md:h-8 w-px bg-white/10 self-center" />
 
                 {/* Resume download */}
                 <DockButton
@@ -98,19 +81,17 @@ export const Dock = () => {
                     }}
                     icon={FileText}
                     label="Resume"
-                    isMobile={isMobile}
                 />
 
-                {/* Sound toggle - Hidden on mobile */}
-                {!isMobile && (
+                {/* Sound toggle - Hidden on mobile via CSS */}
+                <div className="hidden md:block">
                     <DockButton
                         mouseX={mouseX}
                         onClick={toggleSound}
                         icon={soundEnabled ? Volume2 : VolumeX}
                         label={soundEnabled ? "Sound On" : "Sound Off"}
-                        isMobile={isMobile}
                     />
-                )}
+                </div>
             </motion.nav>
         </motion.div>
     );
@@ -121,10 +102,9 @@ interface DockIconProps {
     mouseX: MotionValue<number>;
     isOpen: boolean;
     isMinimized: boolean;
-    isMobile: boolean;
 }
 
-const DockIcon = ({ app, mouseX, isOpen, isMinimized, isMobile }: DockIconProps) => {
+const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
     const ref = useRef<HTMLButtonElement>(null);
     const { openWindow, focusWindow } = useOSStore();
     const [isHovered, setIsHovered] = useState(false);
@@ -134,9 +114,9 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized, isMobile }: DockIconProps)
         return val - bounds.x - bounds.width / 2;
     });
 
-    // Magnification settings - smaller on mobile
-    const baseSize = isMobile ? 44 : 48;
-    const maxSize = isMobile ? 44 : 68; // No magnification on mobile
+    // Magnification settings
+    const baseSize = 48;
+    const maxSize = 68;
     const range = 120;
 
     const size = useSpring(
@@ -145,7 +125,7 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized, isMobile }: DockIconProps)
     );
 
     const y = useSpring(
-        useTransform(distance, [-range, 0, range], [0, isMobile ? 0 : -8, 0]),
+        useTransform(distance, [-range, 0, range], [0, -8, 0]),
         { stiffness: 300, damping: 25 }
     );
 
@@ -163,12 +143,12 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized, isMobile }: DockIconProps)
         <motion.button
             ref={ref}
             onClick={handleClick}
-            onMouseEnter={() => !isMobile && setIsHovered(true)}
+            onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            style={{ width: isMobile ? baseSize : size, height: isMobile ? baseSize : size, y: isMobile ? 0 : y }}
-            className="relative flex items-center justify-center active:scale-90 transition-transform"
+            className="dock-icon relative flex items-center justify-center active:scale-90 transition-transform"
             whileTap={{ scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            style={{ width: size, height: size, y }}
         >
             {/* Background */}
             <motion.div
@@ -185,19 +165,19 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized, isMobile }: DockIconProps)
             />
 
             {/* Icon */}
-            <motion.div className="relative z-10 flex items-center justify-center text-white/70">
-                <Icon size={isMobile ? 20 : 22} strokeWidth={1.5} />
+            <motion.div className="relative z-10 flex items-center justify-center text-white/70 dock-icon-svg">
+                <Icon size={22} strokeWidth={1.5} />
             </motion.div>
 
-            {/* Tooltip - Desktop only */}
+            {/* Tooltip - Desktop only, controlled by CSS */}
             <AnimatePresence>
-                {isHovered && !isMobile && (
+                {isHovered && (
                     <motion.div
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none"
+                        className="hidden md:block absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none"
                     >
                         <div className="px-2.5 py-1 rounded-md bg-[#1a1a1a]/95 border border-white/10 text-xs font-medium text-white shadow-lg">
                             {app.label}
@@ -225,10 +205,9 @@ interface DockButtonProps {
     onClick: () => void;
     icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
     label: string;
-    isMobile: boolean;
 }
 
-const DockButton = ({ mouseX, onClick, icon: Icon, label, isMobile }: DockButtonProps) => {
+const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => {
     const ref = useRef<HTMLButtonElement>(null);
     const [isHovered, setIsHovered] = useState(false);
 
@@ -237,8 +216,8 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label, isMobile }: DockButton
         return val - bounds.x - bounds.width / 2;
     });
 
-    const baseSize = isMobile ? 38 : 40;
-    const maxSize = isMobile ? 38 : 52;
+    const baseSize = 40;
+    const maxSize = 52;
     const range = 100;
 
     const size = useSpring(
@@ -247,7 +226,7 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label, isMobile }: DockButton
     );
 
     const y = useSpring(
-        useTransform(distance, [-range, 0, range], [0, isMobile ? 0 : -5, 0]),
+        useTransform(distance, [-range, 0, range], [0, -5, 0]),
         { stiffness: 300, damping: 25 }
     );
 
@@ -255,11 +234,11 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label, isMobile }: DockButton
         <motion.button
             ref={ref}
             onClick={onClick}
-            onMouseEnter={() => !isMobile && setIsHovered(true)}
+            onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            style={{ width: isMobile ? baseSize : size, height: isMobile ? baseSize : size, y: isMobile ? 0 : y }}
-            className="relative flex items-center justify-center rounded-lg active:scale-90 transition-transform"
+            className="dock-button relative flex items-center justify-center rounded-lg active:scale-90 transition-transform"
             whileTap={{ scale: 0.9 }}
+            style={{ width: size, height: size, y }}
         >
             <div
                 className="absolute inset-0 rounded-lg"
@@ -268,16 +247,18 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label, isMobile }: DockButton
                     boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
                 }}
             />
-            <Icon size={isMobile ? 16 : 18} strokeWidth={1.5} className="text-white/50 relative z-10" />
+            <div className="dock-button-svg text-white/50 relative z-10">
+                <Icon size={18} strokeWidth={1.5} />
+            </div>
 
             {/* Tooltip - Desktop only */}
             <AnimatePresence>
-                {isHovered && !isMobile && (
+                {isHovered && (
                     <motion.div
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
-                        className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none"
+                        className="hidden md:block absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none"
                     >
                         <div className="px-2.5 py-1 rounded-md bg-[#1a1a1a]/95 border border-white/10 text-xs font-medium text-white shadow-lg">
                             {label}

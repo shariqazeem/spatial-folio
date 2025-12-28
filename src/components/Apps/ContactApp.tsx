@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Github, Linkedin, Twitter, Copy, Check, Send, MapPin } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -189,9 +189,19 @@ const SlideToSend = ({
 }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState(0);
-    const sliderWidth = typeof window !== 'undefined' && window.innerWidth < 400 ? 240 : 280;
+    const [sliderWidth, setSliderWidth] = useState(280);
     const handleWidth = 48;
     const maxDrag = sliderWidth - handleWidth - 8;
+
+    // Responsive slider width
+    useEffect(() => {
+        const updateWidth = () => {
+            setSliderWidth(window.innerWidth < 400 ? 240 : 280);
+        };
+        updateWidth();
+        window.addEventListener('resize', updateWidth);
+        return () => window.removeEventListener('resize', updateWidth);
+    }, []);
 
     const handleDrag = (_: unknown, info: { offset: { x: number } }) => {
         const newProgress = Math.max(0, Math.min(1, info.offset.x / maxDrag));

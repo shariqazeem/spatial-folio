@@ -29,8 +29,10 @@ const APP_TITLES: Record<AppId, string> = {
 // Hook to detect mobile
 const useIsMobile = () => {
     const [isMobile, setIsMobile] = useState(false);
+    const [hasMounted, setHasMounted] = useState(false);
 
     useEffect(() => {
+        setHasMounted(true);
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
         };
@@ -39,12 +41,12 @@ const useIsMobile = () => {
         return () => window.removeEventListener("resize", checkMobile);
     }, []);
 
-    return isMobile;
+    return { isMobile, hasMounted };
 };
 
 export const Desktop = () => {
     const { windows, activeWindowId, closeWindow } = useOSStore();
-    const isMobile = useIsMobile();
+    const { isMobile, hasMounted } = useIsMobile();
 
     // Keyboard shortcuts
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -125,9 +127,8 @@ export const Desktop = () => {
                     )}
                 </AnimatePresence>
 
-                {/* Windows - Desktop vs Mobile */}
-                {isMobile ? (
-                    // Mobile: Full-screen sheet style
+                {/* Windows - Mobile: Full-screen sheet */}
+                <div className="md:hidden">
                     <AnimatePresence mode="wait">
                         {openWindows.length > 0 && (
                             <MobileSheet
@@ -136,8 +137,10 @@ export const Desktop = () => {
                             />
                         )}
                     </AnimatePresence>
-                ) : (
-                    // Desktop: Draggable windows
+                </div>
+
+                {/* Windows - Desktop: Draggable windows */}
+                <div className="hidden md:block">
                     <AnimatePresence mode="popLayout">
                         {openWindows.map((windowState) => {
                             const AppComponent = APP_COMPONENTS[windowState.id];
@@ -148,7 +151,7 @@ export const Desktop = () => {
                             );
                         })}
                     </AnimatePresence>
-                )}
+                </div>
             </div>
 
             {/* Dock */}

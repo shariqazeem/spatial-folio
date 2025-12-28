@@ -177,3 +177,37 @@ body {
 .drag-handle:active {
   cursor: grabbing;
 }
+
+/* Mobile Dock Responsiveness */
+@media (max-width: 767px) {
+  /* Override Framer Motion inline styles for dock icons on mobile */
+  .dock-icon {
+    width: 44px !important;
+    height: 44px !important;
+    transform: translateY(0) !important;
+  }
+
+  .dock-button {
+    width: 36px !important;
+    height: 36px !important;
+    transform: translateY(0) !important;
+  }
+
+  .dock-icon-svg svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .dock-button-svg svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
+/* Touch devices - disable hover effects and magnification */
+@media (hover: none) and (pointer: coarse) {
+  .dock-icon,
+  .dock-button {
+    transform: translateY(0) !important;
+  }
+}
