@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import {
     motion,
     useMotionValue,
@@ -25,16 +25,29 @@ const DOCK_APPS: DockApp[] = [
     { id: "contact", icon: Mail, label: "Contact" },
 ];
 
+// Hook to detect if device supports hover (not touch)
+const useIsTouch = () => {
+    const [isTouch, setIsTouch] = useState(true); // Default to touch for SSR
+
+    useEffect(() => {
+        // Check if device has hover capability
+        const hasHover = window.matchMedia('(hover: hover)').matches;
+        setIsTouch(!hasHover);
+    }, []);
+
+    return isTouch;
+};
+
 export const Dock = () => {
     const mouseX = useMotionValue(Infinity);
     const { windows, soundEnabled, toggleSound } = useOSStore();
+    const isTouch = useIsTouch();
 
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        // Only enable magnification on non-touch devices
-        if (window.matchMedia('(hover: hover)').matches) {
+        if (!isTouch) {
             mouseX.set(e.pageX);
         }
-    }, [mouseX]);
+    }, [mouseX, isTouch]);
 
     const handleMouseLeave = useCallback(() => {
         mouseX.set(Infinity);
@@ -64,6 +77,7 @@ export const Dock = () => {
                         mouseX={mouseX}
                         isOpen={windows[app.id].isOpen}
                         isMinimized={windows[app.id].isMinimized}
+                        isTouch={isTouch}
                     />
                 ))}
 
@@ -81,6 +95,7 @@ export const Dock = () => {
                     }}
                     icon={FileText}
                     label="Resume"
+                    isTouch={isTouch}
                 />
 
                 {/* Sound toggle - Hidden on mobile via CSS */}
@@ -90,6 +105,7 @@ export const Dock = () => {
                         onClick={toggleSound}
                         icon={soundEnabled ? Volume2 : VolumeX}
                         label={soundEnabled ? "Sound On" : "Sound Off"}
+                        isTouch={isTouch}
                     />
                 </div>
             </motion.nav>
@@ -102,9 +118,10 @@ interface DockIconProps {
     mouseX: MotionValue<number>;
     isOpen: boolean;
     isMinimized: boolean;
+    isTouch: boolean;
 }
 
-const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
+const DockIcon = ({ app, mouseX, isOpen, isMinimized, isTouch }: DockIconProps) => {
     const ref = useRef<HTMLButtonElement>(null);
     const { openWindow, focusWindow } = useOSStore();
     const [isHovered, setIsHovered] = useState(false);
@@ -138,6 +155,34 @@ const DockIcon = ({ app, mouseX, isOpen, isMinimized }: DockIconProps) => {
     };
 
     const Icon = app.icon;
+
+    // On touch devices, use fixed size without motion
+    if (isTouch) {
+        return (
+            <button
+                ref={ref}
+                onClick={handleClick}
+                className="dock-icon relative flex items-center justify-center active:scale-90 transition-transform w-11 h-11"
+            >
+                <div
+                    className="absolute inset-0 rounded-xl"
+                    style={{
+                        background: isOpen
+                            ? "linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)"
+                            : "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
+                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+                    }}
+                />
+                <div className="relative z-10 flex items-center justify-center text-white/70">
+                    <Icon size={20} strokeWidth={1.5} />
+                </div>
+                <div
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white/60 transition-opacity"
+                    style={{ opacity: isOpen ? 1 : 0 }}
+                />
+            </button>
+        );
+    }
 
     return (
         <motion.button
@@ -205,9 +250,10 @@ interface DockButtonProps {
     onClick: () => void;
     icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
     label: string;
+    isTouch: boolean;
 }
 
-const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => {
+const DockButton = ({ mouseX, onClick, icon: Icon, label, isTouch }: DockButtonProps) => {
     const ref = useRef<HTMLButtonElement>(null);
     const [isHovered, setIsHovered] = useState(false);
 
@@ -229,6 +275,28 @@ const DockButton = ({ mouseX, onClick, icon: Icon, label }: DockButtonProps) => 
         useTransform(distance, [-range, 0, range], [0, -5, 0]),
         { stiffness: 300, damping: 25 }
     );
+
+    // On touch devices, use fixed size without motion
+    if (isTouch) {
+        return (
+            <button
+                ref={ref}
+                onClick={onClick}
+                className="dock-button relative flex items-center justify-center rounded-lg active:scale-90 transition-transform w-9 h-9"
+            >
+                <div
+                    className="absolute inset-0 rounded-lg"
+                    style={{
+                        background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
+                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+                    }}
+                />
+                <div className="text-white/50 relative z-10">
+                    <Icon size={16} strokeWidth={1.5} />
+                </div>
+            </button>
+        );
+    }
 
     return (
         <motion.button
