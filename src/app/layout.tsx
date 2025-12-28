@@ -9,22 +9,33 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-    title: "Spatial Portfolio | Full Stack Engineer",
-    description: "A spatial desktop experience showcasing the work of a design-obsessed full stack engineer. Building the impossible on Solana.",
-    keywords: ["developer", "portfolio", "React", "Next.js", "Solana", "blockchain", "web3", "spatial", "desktop"],
-    authors: [{ name: "Developer" }],
-    creator: "Developer",
+    title: "Shariq Shaukat | Full Stack Engineer & Blockchain Developer",
+    description: "5x Hackathon Winner building on Solana. A spatial desktop experience showcasing AI agents, DeFi protocols, and production-grade dApps.",
+    keywords: ["Shariq Shaukat", "Full Stack Engineer", "Blockchain Developer", "Solana", "React", "Next.js", "Web3", "AI", "DeFi"],
+    authors: [{ name: "Shariq Shaukat" }],
+    creator: "Shariq Shaukat",
     openGraph: {
         type: "website",
         locale: "en_US",
-        title: "Spatial Portfolio | Full Stack Engineer",
-        description: "A spatial desktop experience showcasing the work of a design-obsessed full stack engineer.",
-        siteName: "Spatial Portfolio",
+        url: "https://shariqshaukat.vercel.app",
+        title: "Shariq Shaukat | Full Stack Engineer & Blockchain Developer",
+        description: "5x Hackathon Winner building on Solana. AI agents, DeFi protocols, and production-grade dApps.",
+        siteName: "Shariq Shaukat Portfolio",
+        images: [
+            {
+                url: "/og-image.png",
+                width: 1200,
+                height: 630,
+                alt: "Shariq Shaukat - Spatial Portfolio",
+            },
+        ],
     },
     twitter: {
         card: "summary_large_image",
-        title: "Spatial Portfolio | Full Stack Engineer",
-        description: "A spatial desktop experience showcasing the work of a design-obsessed full stack engineer.",
+        title: "Shariq Shaukat | Full Stack Engineer",
+        description: "5x Hackathon Winner building on Solana. AI agents, DeFi protocols, and production-grade dApps.",
+        creator: "@shariqshkt",
+        images: ["/og-image.png"],
     },
     robots: {
         index: true,

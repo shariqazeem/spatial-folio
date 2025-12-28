@@ -9,7 +9,7 @@ import {
     MotionValue,
     AnimatePresence,
 } from "framer-motion";
-import { User, Briefcase, Layers, Mail, Volume2, VolumeX } from "lucide-react";
+import { User, Briefcase, Layers, Mail, Volume2, VolumeX, FileText } from "lucide-react";
 import { useOSStore, AppId } from "@/store/os-store";
 
 interface DockApp {
@@ -65,6 +65,19 @@ export const Dock = () => {
 
                 {/* Divider */}
                 <div className="mx-1.5 h-8 w-px bg-white/10 self-center" />
+
+                {/* Resume download */}
+                <DockButton
+                    mouseX={mouseX}
+                    onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = "/resume.pdf";
+                        link.download = "Shariq_Shaukat_Resume.pdf";
+                        link.click();
+                    }}
+                    icon={FileText}
+                    label="Download Resume"
+                />
 
                 {/* Sound toggle */}
                 <DockButton
